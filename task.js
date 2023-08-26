@@ -26,7 +26,7 @@ var Task = {
                 //     console.log('task.js: spawnTasks: harvesterpro: redFlags' );
                 // }
                 
-                desiredNum = redFlags.length;
+                desiredNum = Math.max(redFlags.length, 1);
             } else if (c == 'carrier') {
                 
                 priority = 4;
