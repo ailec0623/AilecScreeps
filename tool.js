@@ -3,6 +3,7 @@ var tool = {
         this.initGame();
         this.getPixels();
         this.cleanCreeps();
+        this.upgradWall();
     },
     getPixels: function () {
         if (Game.cpu.bucket == 10000) {
@@ -37,8 +38,8 @@ var tool = {
     upgradWall: function() {
         if(Game.time % 200 == 0){
             for (room in Memory.mainRooms) {
-                if(Game.rooms[room].storage.store.getUsedCapacity(RESOURCE_ENERGY) >= 400000){
-                    Memory.rooms[room].wallHits += 1000;
+                if(Game.rooms[Memory.mainRooms[room]].storage.store.getUsedCapacity(RESOURCE_ENERGY) >= 400000){
+                    Memory.rooms[Memory.mainRooms[room]].wallHits += 1000;
                 }
             }
         }
