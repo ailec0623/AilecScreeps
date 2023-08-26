@@ -161,7 +161,7 @@ var Task = {
     },
     initTasks: function (room) {
         if(!Memory.rooms) {
-            Memory.rooms = [];
+            Memory.rooms = {};
         }
         if (!Memory.rooms[room]) {
             Memory.rooms[room] = {};
