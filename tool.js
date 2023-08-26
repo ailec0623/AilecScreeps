@@ -40,7 +40,7 @@ var tool = {
         if(Game.time % 200 == 0){
             for (let room of Memory.mainRooms) {
                 if(Game.rooms[room].storage && Game.rooms[room].storage.store.getUsedCapacity(RESOURCE_ENERGY) >= 400000){
-                    Memory.rooms[Memory.mainRooms[room]].wallHits += 1000;
+                    Memory.rooms[room].wallHits += 1000;
                 }
             }
         }
