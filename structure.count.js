@@ -1,0 +1,16 @@
+var buildingCount = {
+    STRUCTURE_TOWER: [0,0,1,1,2,2,3,6],
+    STRUCTURE_ROAD: [0, 5, 20, 40, 70, 70, 70, 70],
+    STRUCTURE_EXTENSION: [0, 5, 10, 20, 30, 40, 50, 60],
+    STRUCTURE_LINK: [0,0,0,0,1,1,1,1],
+    STRUCTURE_FACTORY: [0,0,0,0,0,0,1,1],
+    STRUCTURE_LAB: [0,0,0,0,0,3,6,10],
+    STRUCTURE_NUKER: [0,0,0,0,0,0,0,1],
+    STRUCTURE_OBSERVER: [0,0,0,0,0,0,0,1],
+    STRUCTURE_POWER_SPAWN: [0,0,0,0,0,0,0,1],
+    STRUCTURE_SPAWN: [1,1,1,1,1,1,2,3],
+    STRUCTURE_STORAGE: [0,0,0,1,1,1,1,1],
+    STRUCTURE_TERMINAL: [0,0,0,0,0,1,1,1]
+}
+
+module.exports = buildingCount;

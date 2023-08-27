@@ -1,7 +1,65 @@
 var Task = require('task');
+var buildingCount = require('structure.count');
 
 var Room = {
+    build: function(room) {
+        var flags = room.find(FIND_FLAGS, {
+            filter: (f) => {
+                return f.color === COLOR_BLUE;
+            }
+        })
+        if(flags.length == 0 && room.controller.level == 8){
+            room.memory.autoBuild = false;
+        }
+        if(room.find(FIND_CONSTRUCTION_SITES).length == 0){
+            for ( let b in room.memory.buildings) {
+                if (room.memory.buildings[b] < buildingCount[b][room.controller.level - 1]) {
+                    var central = room.getPositionAt(room.memory.firstSpawn.pos.x, room.memory.firstSpawn.pos.y);
+                    var color = {
+                        STRUCTURE_TOWER:COLOR_YELLOW,
+                        STRUCTURE_ROAD: COLOR_RED,
+                        STRUCTURE_EXTENSION: COLOR_PURPLE,
+                        STRUCTURE_LINK: COLOR_BROWN,
+                        STRUCTURE_FACTORY: COLOR_GREY,
+                        STRUCTURE_LAB: COLOR_BLUE,
+                        STRUCTURE_NUKER: COLOR_YELLOW,
+                        STRUCTURE_OBSERVER: COLOR_GREEN,
+                        STRUCTURE_POWER_SPAWN: COLOR_CYAN,
+                        STRUCTURE_SPAWN: COLOR_CYAN,
+                        STRUCTURE_STORAGE: COLOR_WHITE,
+                        STRUCTURE_TERMINAL: COLOR_ORANGE
+                    };
+                    var structureType = {
+                        STRUCTURE_TOWER:STRUCTURE_TOWER,
+                        STRUCTURE_ROAD: STRUCTURE_ROAD,
+                        STRUCTURE_EXTENSION: STRUCTURE_EXTENSION,
+                        STRUCTURE_LINK: STRUCTURE_LINK,
+                        STRUCTURE_FACTORY: STRUCTURE_FACTORY,
+                        STRUCTURE_LAB: STRUCTURE_LAB,
+                        STRUCTURE_NUKER: STRUCTURE_NUKER,
+                        STRUCTURE_OBSERVER: STRUCTURE_OBSERVER,
+                        STRUCTURE_POWER_SPAWN: STRUCTURE_POWER_SPAWN,
+                        STRUCTURE_SPAWN: STRUCTURE_SPAWN,
+                        STRUCTURE_STORAGE: STRUCTURE_STORAGE,
+                        STRUCTURE_TERMINAL: STRUCTURE_TERMINAL
+                    };
+                    var flag = central.findClosestByRange(FIND_FLAGS, {
+                        filter: function(flag) {
+                            return flag.color === COLOR_BLUE && flag.secondaryColor === color[b];
+                        }
+                    });
+                    flag.pos.createConstructionSite(structureType[b], "Spawn" + (Game.spawns.length + 1));
+                    flag.remove();
+                    room.memory.buildings[b]++;
+                    break;
+                }
+            }
+        }
+    },
     mainRoom: function(room){
+        if(room.memory.autoBuild){
+            this.build(room);
+        }
         Task.initTasks(room.name);
         Task.spawnTasks(room);
         // Task.repairTask(room);

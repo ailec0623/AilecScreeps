@@ -26,12 +26,16 @@ var tool = {
         }
         for ( let spawn in Game.spawns) {
             if (!Memory.mainRooms.includes(Game.spawns[spawn].room.name)) {
-                Memory.mainRooms.push(Game.spawns[spawn].room.name);
-                Memory.rooms[Game.spawns[spawn].room.name] = {};
-                Memory.rooms[Game.spawns[spawn].room.name].extension = [];
-                Memory.rooms[Game.spawns[spawn].room.name].centralLink = '';
-                Memory.rooms[Game.spawns[spawn].room.name].wallHits = 100;
-                this.initHarvesterPosition(Game.spawns[spawn].room);
+                var room = Game.spawns[spawn].room;
+                Memory.mainRooms.push(room.name);
+                Memory.rooms[room.name] = {};
+                Memory.rooms[room.name].firstSpawn = {pos: {x: Game.spawns[spawn].pos.x, y: Game.spawns[spawn].pos.y}};
+                Memory.rooms[room.name].extension = [];
+                Memory.rooms[room.name].centralLink = '';
+                Memory.rooms[room.name].wallHits = 100;
+                Memory.rooms[room.name].autoBuild = true;
+                this.initHarvesterPosition(room);
+                this.initBuildingPosition(room, Game.spawns[spawn].pos.x - 6, Game.spawns[spawn].pos.y - 3);
             }
         }
     },
@@ -63,7 +67,6 @@ var tool = {
                         room.getPositionAt(b.x, b.y).getRangeTo(room.controller);
             })
             if(area.length == 0){
-                console.log(`Nearby position: ${x}, ${y}`);
                 continue;
             }
             var flagPosition = room.getPositionAt(area[0].x, area[0].y);
@@ -71,6 +74,62 @@ var tool = {
                 flagPosition.createFlag("HP" + flagCounter, COLOR_RED);
                 flagCounter++;
             }
+        }
+    },
+
+    initBuildingPosition: function(room, offset_x, offset_y) {
+        room.memory.buildings = {
+            STRUCTURE_TOWER: 0,
+            STRUCTURE_ROAD: 0,
+            STRUCTURE_EXTENSION: 0,
+            STRUCTURE_LINK: 0,
+            STRUCTURE_FACTORY: 0,
+            STRUCTURE_LAB: 0,
+            STRUCTURE_NUKER: 0,
+            STRUCTURE_OBSERVER: 0,
+            STRUCTURE_POWER_SPAWN: 0,
+            STRUCTURE_SPAWN: 1,
+            STRUCTURE_STORAGE: 0,
+            STRUCTURE_TERMINAL: 0
+        };
+        var str = `aaabbbbbbbaaa\naabcccbdddbaa\nabccbcbdbddba\nbccbcbabdbdob\nbcbccbtbddbnb\nbbcctbqbtccbb\nbcccblafbcccb\nbbcctbrbtccbb\nbcbcsbtbscbcb\nbccbcbpbcbccb\nabccbcbdbddba\naabcccbdddbaa\naaabbbbbbbaaa`
+        let x = 0;
+        let y = 0;
+        let flagCounter = 3;
+        for (let i = 0; i < str.length; i++) {
+            const char = str[i];
+            if (char === 'a') {
+                x++;
+                continue;
+            }
+            if (char === '\n') {
+                y++;
+                x = 0;
+                continue;
+            }
+            var color = COLOR_WHITE;
+            switch(char) {
+                case "b": color = COLOR_RED; break;
+                case "c": color = COLOR_PURPLE; break;
+                case "d": color = COLOR_BLUE; break;
+                case "s": color = COLOR_CYAN; break;
+                case "o": color = COLOR_GREEN; break;
+                case "t": color = COLOR_YELLOW; break;
+                case "q": color = COLOR_ORANGE; break;
+                case "l": color = COLOR_BROWN; break;
+                case "f": color = COLOR_GREY; break;
+                case "r": color = COLOR_WHITE; break;
+                case "n": color = COLOR_YELLOW; break;
+                case "p": color = COLOR_CYAN; break;
+            }
+            var flagPosition = room.getPositionAt(offset_x + x, offset_y + y);
+            if (flagPosition.lookFor(LOOK_TERRAIN) === "wall") {
+                x++;
+                continue;
+            }
+            flagPosition.createFlag("B" + flagCounter, COLOR_BLUE, color);
+            flagCounter++;
+            x++;
         }
     }
 }
