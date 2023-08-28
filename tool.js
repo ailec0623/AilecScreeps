@@ -32,6 +32,7 @@ var tool = {
                 Memory.rooms[room.name].firstSpawn = {pos: {x: Game.spawns[spawn].pos.x, y: Game.spawns[spawn].pos.y}};
                 Memory.rooms[room.name].extension = [];
                 Memory.rooms[room.name].destroy = [];
+                Memory.rooms[room.name].claimRoom = [];
                 Memory.rooms[room.name].centralLink = '';
                 Memory.rooms[room.name].wallHits = 100;
                 Memory.rooms[room.name].autoBuild = true;

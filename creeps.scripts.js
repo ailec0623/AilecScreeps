@@ -6,7 +6,7 @@ Game.spawns['Spawn1'].spawnCreep([MOVE,MOVE,MOVE,MOVE,MOVE,HEAL,HEAL,HEAL,ATTACK
 Game.spawns['Spawn2'].spawnCreep([MOVE,MOVE,MOVE,MOVE,MOVE,HEAL,HEAL,HEAL,ATTACK,ATTACK],'getpower5',{memory:{role:'getpower',level:1,inTask:true}})
 
 Game.spawns['Spawn1'].spawnCreep([CARRY, MOVE, CARRY, MOVE, CARRY, MOVE, CARRY, MOVE, CARRY, MOVE, CARRY, MOVE, MOVE, MOVE], 'init' + Game.time, {room:'E41N24', memory: { role: 'initializer', level: 1, inTask: true }})
-Game.spawns['Spawn2'].spawnCreep([CARRY, MOVE, CARRY, MOVE, CARRY, MOVE, CARRY, MOVE, CARRY, MOVE, CARRY, MOVE, CARRY, MOVE, MOVE, MOVE], 'init' + Game.time, {room:'E41N24', memory: { role: 'initializer', level: 1, inTask: true }})
+Game.spawns['Spawn9'].spawnCreep([CARRY, MOVE, CARRY, MOVE, CARRY, MOVE, CARRY, MOVE, CARRY, MOVE, CARRY, MOVE, CARRY, MOVE, MOVE, MOVE], 'init' + Game.time, {room:Game.spawns['Spawn9'].room.name, memory: { role: 'initializer', level: 1, inTask: true, room:Game.spawns['Spawn9'].room.name }})
 
 
 Game.spawns['Spawn5'].spawnCreep([CARRY,CARRY,MOVE], 'carrier'+ Game.time, {memory: {room:'E42N21', role: 'carrier', level: 1, inTask: false }})
@@ -16,3 +16,6 @@ for(let r in Memory.mainRooms){
 Game.spawns['Spawn5'].spawnCreep([MOVE], 'm', {room:'E42N21', memory: { role: 'm', level: 1, inTask: true }})
 
 Game.spawns['Spawn5'].spawnCreep([WORK, MOVE,WORK, MOVE,WORK, MOVE], 'a'+ Game.time, {room:'E41N22', memory: { role: 'a', level: 1, inTask: true }})
+Memory.rooms["E42N21"].destroy = ["E44N19"]
+Memory.rooms["E42N21"].claimRoom = "E44N19"
+Memory.rooms["E41N22"].claimRoom = "E39N22"

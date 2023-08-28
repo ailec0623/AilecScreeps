@@ -250,7 +250,6 @@ const creepExtension = {
                         this.moveTo(room.controller);
                     }else if(result == ERR_INVALID_TARGET) {
                         var result = this.attackController(room.controller);
-                        console.log(result)
                     }
                 }catch{
                     this.moveTo(new RoomPosition(25, 25, targetRoomName));
@@ -258,32 +257,39 @@ const creepExtension = {
                 return;
             }
             if(this.memory.role == 'initializer'){
-                var room = Game.rooms['E42N21'];
+                var room = Game.rooms['E44N19'];
                 if(this.store.getUsedCapacity(RESOURCE_ENERGY) == 0){
-                    if(this.withdraw(Game.rooms['E41N22'].storage, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
-                        this.moveTo(Game.rooms['E41N22'].storage);
+                    // var targets = room.find(FIND_DROPPED_RESOURCES, {
+                    //     filter: function(object) {
+                    //         return object.resourceType === RESOURCE_ENERGY;
+                    //     }
+                    // });
+                    // if(targets.length){
+                    //     this.moveTo(targets[0]);
+                    //     this.pickup(targets[0]);
+                    //     return;
+                    // }
+                    if(this.withdraw(Game.rooms[this.memory.room].storage, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
+                        this.moveTo(Game.rooms[this.memory.room].storage);
                     }
                 }else{
                     try{
-
                         var r1 = this.build(room.find(FIND_MY_CONSTRUCTION_SITES)[0]);
                         if (r1 == ERR_NOT_IN_RANGE) {
                             this.moveTo(room.find(FIND_MY_CONSTRUCTION_SITES)[0]);
                             return;
-                        }else if (r1 == ERR_INVALID_TARGET && Game.getObjectById("63950b9705a170160de01e69").getFreeCapacity > 0) {
-                            var r2 = this.transfer(Game.getObjectById("63950b9705a170160de01e69"), RESOURCE_ENERGY)
-                            if(r2 == ERR_NOT_IN_RANGE) {
-                                this.moveTo(Game.getObjectById("63950b9705a170160de01e69"));
+                        }else{
+                            var t = Game.getObjectById("64ed22916ee000ddf334f49e");
+                            if(this.transfer(t, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE){
+                                this.moveTo(t);
                                 return;
                             }
-                        }else{
                             if(this.upgradeController(room.controller) == ERR_NOT_IN_RANGE){
                                 this.moveTo(room.controller);
                             }
                         }
                     }catch(e){
-                        console.log(e.stack)
-                        this.moveTo(new RoomPosition(25, 25, 'E42N21'));
+                        this.moveTo(new RoomPosition(25, 25, 'E44N19'));
                     }
                     
                 }

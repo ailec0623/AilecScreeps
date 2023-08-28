@@ -106,10 +106,9 @@ var Behavior = {
                 }
                 return;
             }
-
             targets = creep.room.find(FIND_HOSTILE_STRUCTURES, {
                 filter: function(object) {
-                    return object.structureType != STRUCTURE_CONTROLLER && object.structureType != STRUCTURE_WALL;
+                    return object.structureType != STRUCTURE_CONTROLLER && object.structureType != STRUCTURE_WALL && object.structureType != STRUCTURE_RAMPART;
                 }
             })
             if(creep.attack(targets[0]) != 0){

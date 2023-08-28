@@ -3,6 +3,9 @@ var buildingCount = require('structure.count');
 
 var Room = {
     build: function(room) {
+        if(room.controller.ticksToDowngrade <= 4000){
+            return;
+        }
         var flags = room.find(FIND_FLAGS, {
             filter: (f) => {
                 return f.color === COLOR_BLUE;

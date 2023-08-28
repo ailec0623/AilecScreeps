@@ -114,9 +114,14 @@ var Task = {
                 }
             } else if (c == 'claimer') {
                 priority = 6;
-                if (room.memory.claimRoom.length > 0 && room.controller.level >= 7) {
-                    desiredNum = config[c]['auto']['num'];
+                try{
+                    if (room.memory.claimRoom != "" && room.controller.level >= 7) {
+                        desiredNum = config[c]['auto']['num'];
+                    }
+                } catch {
+                    room.memory.claimRoom = "";
                 }
+
             }
 
             if (creeps[c] < desiredNum) {
