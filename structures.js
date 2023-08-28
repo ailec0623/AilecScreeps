@@ -22,6 +22,8 @@ var Structure = {
                 }else if(structure.structureType == STRUCTURE_TOWER){
                     Tower.run(structure);
                     this.deliveryTasks(structure, room, 3, 1);
+                }else if(structure.structureType == STRUCTURE_NUKER){
+                    this.deliveryTasks(structure, room, 3, 1);
                 }else if(structure.structureType == STRUCTURE_LINK){
                     try{
                         if(structure.id == structure.room.memory.centralLink){

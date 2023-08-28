@@ -66,9 +66,52 @@ var Room = {
         for(let i in room.memory.extension){
             this.extensionRoom(room.memory.extension[i]);
         }
+        if(room.memory.claimRoom != ""){
+            this.claimRoom(room, room.memory.claimRoom);
+        }
+        if(room.memory.destroy.length >= 1) {
+            this.destroyRoom(room, room.memory.destroy[0]);
+        }
         
     },
+    claimRoom: function(mainRoom, roomName) {
+        var o = mainRoom.find(FIND_MY_STRUCTURES, {
+            filter: { structureType: STRUCTURE_OBSERVER }
+        });
+        if(o.length == 0){
+            return;
+        }
+        o[0].observeRoom(roomName);
+        try{
+            if(Game.rooms[roomName].controller.my){
+                mainRoom.memory.claim = "";
+            }
+        } catch {
+            return;
+        }
+    },
+    destroyRoom: function(mainRoom, roomName) {
+        var o = mainRoom.find(FIND_MY_STRUCTURES, {
+            filter: { structureType: STRUCTURE_OBSERVER }
+        });
+        if(o.length == 0){
+            return;
+        }
+        o[0].observeRoom(roomName);
+        try{
+            var targets = Game.rooms[roomName].find(FIND_HOSTILE_STRUCTURES, {
+                filter: function(object) {
+                    return object.structureType != STRUCTURE_CONTROLLER;
+                }
+            });
+        } catch {
+            return;
+        }
 
+        if(targets.length == 0){
+            mainRoom.memory.destroy = [];
+        }
+    },
     extensionRoom: function(room){
         Task.initTasks(room);
         if(!Game.rooms[room]){

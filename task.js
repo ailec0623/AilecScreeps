@@ -9,13 +9,20 @@ var Task = {
             carrier: _.filter(Game.creeps, (creep) => creep.memory.role == 'carrier' && (creep.memory.room == room.name)).length,
             worker: _.filter(Game.creeps, (creep) => creep.memory.role == 'worker' && (creep.memory.room == room.name)).length,
             reserver: _.filter(Game.creeps, (creep) => creep.memory.role == 'reserver' && (creep.memory.room == room.name)).length,
+            conqueror: _.filter(Game.creeps, (creep) => creep.memory.role == 'conqueror' && (creep.memory.room == room.name)).length,
+            claimer: _.filter(Game.creeps, (creep) => creep.memory.role == 'claimer' && (creep.memory.room == room.name)).length,
             //getpower: _.filter(Game.creeps, (creep) => creep.memory.role == 'getpower'),
         };
         for(let i in room.memory.tasks.spawn){
             creeps[room.memory.tasks.spawn[i].addition.role] += 1;
         }
         for (var c in creeps) {
-            var desiredNum = config[c][room.controller.level]['num'];
+            var desiredNum = 0;
+            try{
+                desiredNum = config[c][room.controller.level]['num'];
+            } catch {
+                desiredNum = 0;
+            }
             var priority = 10;
             if (c == 'harvesterpro') {
                 priority = 3;
@@ -100,6 +107,16 @@ var Task = {
                         }
                     }
                 }
+            } else if (c == 'conqueror') {
+                priority = 6;
+                if (room.memory.destroy.length > 0 && room.controller.level >= 7) {
+                    desiredNum = config[c]['auto']['num'];
+                }
+            } else if (c == 'claimer') {
+                priority = 6;
+                if (room.memory.claimRoom.length > 0 && room.controller.level >= 7) {
+                    desiredNum = config[c]['auto']['num'];
+                }
             }
 
             if (creeps[c] < desiredNum) {
@@ -159,6 +176,13 @@ var Task = {
             }
         }
     },
+    destroyTask: function (room) {
+        let haveTask = room.memory.tasks.destroy.length;
+
+        if (haveTask < room.memory.destroy.length) {
+            Releaser.releaseTask(room, 'destroy', 25, 25, "", 1, null);
+        }
+    },
     initTasks: function (room) {
         if(!Memory.rooms) {
             Memory.rooms = {};
@@ -198,6 +222,9 @@ var Task = {
         }
         if (!Memory.rooms[room].tasks.spawn) {
             Memory.rooms[room].tasks.spawn = []
+        }
+        if (!Memory.rooms[room].tasks.destroy) {
+            Memory.rooms[room].tasks.destroy = []
         }
     },
     sortTasks: function (room) {

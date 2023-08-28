@@ -159,7 +159,6 @@ var config = {
             mod: [CLAIM,CLAIM,MOVE,MOVE]
         },
     },
-
     guard: {
         auto: {
             num:1,
@@ -233,7 +232,23 @@ var config = {
             num: 5,
             mod: [MOVE,MOVE,MOVE,MOVE,MOVE,HEAL,HEAL,HEAL,ATTACK,ATTACK]
         },
-    }
+    },
+    conqueror: {
+        auto: {
+            num:2,
+            base: [ATTACK,ATTACK,MOVE,MOVE],
+            extend: [ATTACK,MOVE],
+            max: 5
+        },
+    },
+    claimer: {
+        auto: {
+            num:1,
+            base: [CLAIM,CLAIM,MOVE,MOVE],
+            extend: [CLAIM,MOVE],
+            max: 0
+        },
+    },
 }
 
 module.exports = config;

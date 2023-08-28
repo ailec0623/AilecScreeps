@@ -212,6 +212,12 @@ const creepExtension = {
             case 'getpower':
                 this.memory.inTask = true;
                 break;
+            case 'conqueror':
+                this.memory.inTask = true;
+                break;
+            case 'claimer':
+                this.memory.inTask = true;
+                break;
         }
     },
     operate: function () {
@@ -233,13 +239,21 @@ const creepExtension = {
                 }
             }
             if(this.memory.role == 'claimer'){
-                var room = Game.rooms['E42N21'];
+                var targetRoomName = Game.rooms[this.memory.room].memory.claimRoom;
+                if (targetRoomName === "") {
+                    return
+                }
+                var room = Game.rooms[targetRoomName];
                 try{
-                    if (this.claimController(room.controller) == ERR_NOT_IN_RANGE) {
+                    var result = this.claimController(room.controller);
+                    if (result == ERR_NOT_IN_RANGE) {
                         this.moveTo(room.controller);
+                    }else if(result == ERR_INVALID_TARGET) {
+                        var result = this.attackController(room.controller);
+                        console.log(result)
                     }
                 }catch{
-                    this.moveTo(new RoomPosition(25, 25, 'E42N21'));
+                    this.moveTo(new RoomPosition(25, 25, targetRoomName));
                 }
                 return;
             }
@@ -294,6 +308,10 @@ const creepExtension = {
                 }
                 return;
             }
+            if(this.memory.role == 'conqueror'){
+                Behavior.destroy(this);
+                return;
+            }
             if(!this.memory.task){
                 return;
             }
@@ -308,6 +326,7 @@ const creepExtension = {
                 case 'upgrade': Behavior.upgrade(this, this.memory.task); break;
                 case 'reserve': Behavior.reserve(this, this.memory.task); break;
                 case 'guard': Behavior.guard(this, this.memory.task); break;
+                case 'conqueror': Behavior.destroy(this); break;
             }
         } else {
             // this.say('😪');

@@ -90,6 +90,33 @@ var Behavior = {
             creep.moveTo(new RoomPosition(task.sourcePosition.x, task.sourcePosition.y, task.sourcePosition.roomName), {reusePath: 50});
         }
     },
+    destroy: function(creep){
+        var mainRoom = creep.memory.room;
+        if(Memory.rooms[mainRoom].destroy.length == 0){
+            return;
+        }
+        var targetRoom = Memory.rooms[mainRoom].destroy[0];
+        if(creep.room.name != targetRoom){
+            creep.moveTo(new RoomPosition(25, 25, targetRoom));
+        }else{
+            var targets = creep.room.find(FIND_HOSTILE_CREEPS);
+            if(targets.length != 0){
+                if(creep.attack(targets[0]) != 0){
+                    creep.moveTo(targets[0]);
+                }
+                return;
+            }
+
+            targets = creep.room.find(FIND_HOSTILE_STRUCTURES, {
+                filter: function(object) {
+                    return object.structureType != STRUCTURE_CONTROLLER && object.structureType != STRUCTURE_WALL;
+                }
+            })
+            if(creep.attack(targets[0]) != 0){
+                creep.moveTo(targets[0]);
+            }
+        }
+    }
 }
 
 module.exports = Behavior;
