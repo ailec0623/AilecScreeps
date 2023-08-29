@@ -28,7 +28,12 @@ var Generator = {
             }
             assumble = assumble.concat(config[role]['auto']['extend']);
         }
-        return spawns.spawnCreep(assumble, newName, { memory: {room: spawns.room.name, role: role, level: spawns.room.controller.level, inTask: false } });
+        var result = spawns.spawnCreep(assumble, newName, { memory: {room: spawns.room.name, role: role, level: spawns.room.controller.level, inTask: false } });
+        while (result == ERR_NOT_ENOUGH_ENERGY && this.calculateCost(assumble) > 300) {
+            assumble.pop();
+            result = spawns.spawnCreep(assumble, newName, { memory: {room: spawns.room.name, role: role, level: spawns.room.controller.level, inTask: false } });
+        }
+        return result;
     },
     nomalSpawn: function (spawns, role) {
         var newName = role + Game.time;

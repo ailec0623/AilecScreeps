@@ -94,7 +94,7 @@ var tool = {
             STRUCTURE_STORAGE: 0,
             STRUCTURE_TERMINAL: 0
         };
-        var str = `aaabbbbbbbaaa\naabcccbdddbaa\nabccbcbdbddba\nbccbcbabdbdob\nbcbccbtbddbnb\nbbcctbqbtccbb\nbcccblafbcccb\nbbcctbrbtccbb\nbcbcsbtbscbcb\nbccbcbpbcbccb\nabccbcbdbddba\naabcccbdddbaa\naaabbbbbbbaaa`
+        var str = `aaabbbbbbbaaa\naabcccbdddbaa\nabccbcbdbddba\nbccbcbabdbdob\nbcbccbtbddbnb\nbbcctbqbtccbb\nbcccblafbcccb\nbbcctbrbtccbb\nbcbcsbtbscbcb\nbccbcbpbcbccb\nabccbcbcbccba\naabcccbcccbaa\naaabbbbbbbaaa`
         let x = 0;
         let y = 0;
         let flagCounter = 3;
