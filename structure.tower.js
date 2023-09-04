@@ -23,10 +23,16 @@ var Tower = {
         });
         var target = null;
         for(let i in targets){
-            if(targets[i].hits < tower.room.memory.wallHits){
+            if(targets[i].structureType == STRUCTURE_WALL || targets[i].structureType == STRUCTURE_RAMPART){
+                if(targets[i].hits < tower.room.memory.wallHits){
+                    target = targets[i];
+                    break;
+                }
+            } else {
                 target = targets[i];
                 break;
             }
+            
         }
         if(target){
             tower.repair(target);

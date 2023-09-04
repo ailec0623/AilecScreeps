@@ -29,7 +29,7 @@ var Generator = {
             assumble = assumble.concat(config[role]['auto']['extend']);
         }
         var result = spawns.spawnCreep(assumble, newName, { memory: {room: spawns.room.name, role: role, level: spawns.room.controller.level, inTask: false } });
-        while (result == ERR_NOT_ENOUGH_ENERGY && this.calculateCost(assumble) > 300) {
+        while (result == ERR_NOT_ENOUGH_ENERGY && this.calculateCost(assumble) > 280) {
             assumble.pop();
             result = spawns.spawnCreep(assumble, newName, { memory: {room: spawns.room.name, role: role, level: spawns.room.controller.level, inTask: false } });
         }
@@ -39,7 +39,11 @@ var Generator = {
         var newName = role + Game.time;
         console.log(spawns.name + ': Spawning new creep(normal): ' + newName);
         if (spawns.room.energyCapacityAvailable >= this.calculateCost(config[role][spawns.room.controller.level]['mod'])) {
-            return spawns.spawnCreep(config[role][spawns.room.controller.level]['mod'], newName, { memory: {room: spawns.room.name, role: role, level: spawns.room.controller.level, inTask: false } });
+            var result = spawns.spawnCreep(config[role][spawns.room.controller.level]['mod'], newName, { memory: {room: spawns.room.name, role: role, level: spawns.room.controller.level, inTask: false } });
+            if (result == ERR_NOT_ENOUGH_ENERGY){
+                result = spawns.spawnCreep(config[role][(spawns.room.controller.level - 1) < 1?1:(spawns.room.controller.level - 1)]['mod'], newName, { memory: {room: spawns.room.name, role: role, level: spawns.room.controller.level - 1, inTask: false } });
+            }
+            return result;
         } else {
             return spawns.spawnCreep(config[role][(spawns.room.controller.level - 1) < 1?1:(spawns.room.controller.level - 1)]['mod'], newName, { memory: {room: spawns.room.name, role: role, level: spawns.room.controller.level - 1, inTask: false } });
         }
