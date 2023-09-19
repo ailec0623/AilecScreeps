@@ -92,6 +92,12 @@ var config = {
         },
     },
     harvesterpro: {
+        auto: {
+            num:2,
+            base: [WORK,WORK,MOVE],
+            extend: [WORK,CARRY,MOVE],
+            max: 4
+        },
         1: {
             num: 4,
             mod: [WORK,WORK,MOVE]
