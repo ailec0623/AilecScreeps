@@ -9,6 +9,8 @@ var Creeps = {
                 creep.reviewTask();
             }catch(error){
                 console.log('Creeps error')
+                console.log('Room:' + Game.creeps[name].room.name)
+                console.log("Creeps:" + name)
                 console.log(error.stack)
             }
 

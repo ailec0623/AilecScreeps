@@ -51,10 +51,14 @@ var Room = {
                             return flag.color === COLOR_BLUE && flag.secondaryColor === color[b];
                         }
                     });
-                    flag.pos.createConstructionSite(structureType[b], "Spawn" + (Game.spawns.length + 1));
-                    flag.remove();
-                    room.memory.buildings[b]++;
-                    break;
+                    if(flag){
+                        flag.pos.createConstructionSite(structureType[b], "Spawn" + (Game.spawns.length + 1));
+                        flag.remove();
+                        room.memory.buildings[b]++;
+                        break;
+                    }else{
+                        console.log("Failed to build: " + b);
+                    }
                 }
             }
         }

@@ -43,7 +43,7 @@ var tool = {
     },
     
     upgradWall: function() {
-        if(Game.time % 200 == 0){
+        if(Game.time % 20 == 0){
             for (let room of Memory.mainRooms) {
                 if(Game.rooms[room].storage && Game.rooms[room].storage.store.getUsedCapacity(RESOURCE_ENERGY) >= 400000){
                     Memory.rooms[room].wallHits += 1000;
