@@ -1,5 +1,5 @@
-var Releaser = require('task.releaser');
-var config = require('role.config')
+var Releaser = require('./task.releaser');
+var config = require('./role.config')
 
 var Task = {
     spawnTasks: function (room) {

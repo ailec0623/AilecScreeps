@@ -1,0 +1,15 @@
+{
+  "name": "ailec-screeps",
+  "version": "2.0.0",
+  "description": "Screeps AI with colony management system",
+  "scripts": {
+    "build": "node build.js",
+    "watch": "node build.js"
+  },
+  "keywords": [
+    "screeps",
+    "ai"
+  ],
+  "author": "Ailec",
+  "license": "MIT"
+}

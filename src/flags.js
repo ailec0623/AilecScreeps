@@ -1,4 +1,4 @@
-var Releaser = require('task.releaser');
+var Releaser = require('./task.releaser');
 
 var Flag = {
     run: function(){
