@@ -18,14 +18,14 @@ class SpawnManager {
      * @returns {boolean}
      */
     static hasAvailableCarrier(room) {
-        const carriers = _.filter(Game.creeps, creep => 
-            creep.memory.role === 'carrier' && 
-            creep.memory.room === room.name &&
-            !creep.spawning
-        );
+        // 优化：使用GameCache获取carriers，避免遍历所有creeps
+        const GameCache = require('../core/GameCache');
+        const carrierNames = GameCache.getCreepsByRoom(room.name, 'carrier');
         
         // 检查是否有carrier没有任务（可以搬运能量）
-        for (const carrier of carriers) {
+        for (const name of carrierNames) {
+            const carrier = Game.creeps[name];
+            if (!carrier || carrier.spawning) continue;
             if (!carrier.memory.inTask) {
                 return true;
             }
@@ -176,6 +176,16 @@ class SpawnManager {
                 inTask: false
             }
         });
+
+        // 生成成功时，把新creep注册进GameCache，避免每tick全量扫描
+        if (result === OK) {
+            try {
+                const GameCache = require('../core/GameCache');
+                GameCache.registerCreep(name, room.name, role);
+            } catch (e) {
+                logger.warn(`Failed to register creep ${name} in GameCache:`, e);
+            }
+        }
 
         return result;
     }

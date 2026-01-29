@@ -22,11 +22,23 @@ class TaskReleaser {
      */
     static releaseTask(room, taskType, sourcePosition, targetPosition, releaserId, priority, addition = null, crossRoom = false, targetRoom = null) {
         const roomName = typeof room === 'string' ? room : room.name;
-        const roomMemory = MemoryManager.getRoomMemory(roomName);
+        let roomMemory = MemoryManager.getRoomMemory(roomName);
 
+        // 如果房间内存不存在，尝试自动初始化
         if (!roomMemory) {
-            logger.warn(`Cannot release task: room ${roomName} not found`);
-            return false;
+            // 尝试从Game.rooms获取房间对象
+            const roomObj = typeof room === 'string' ? Game.rooms[room] : room;
+            if (roomObj) {
+                // 自动初始化房间内存
+                MemoryManager.initializeRoom(roomName, roomObj.find ? roomObj.find(FIND_MY_SPAWNS)[0] : null);
+                roomMemory = MemoryManager.getRoomMemory(roomName);
+            }
+            
+            // 如果仍然不存在，记录警告并返回
+            if (!roomMemory) {
+                logger.warn(`Cannot release task: room ${roomName} not found and cannot be initialized`);
+                return false;
+            }
         }
 
         // 构建位置对象

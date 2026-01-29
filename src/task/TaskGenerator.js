@@ -28,19 +28,31 @@ class TaskGenerator {
         const roomMemory = MemoryManager.getRoomMemory(room.name);
         if (!roomMemory) return;
 
+        // 确保有用于持久存储采矿点位的结构（按房间、按source永久缓存）
+        if (!roomMemory.harvestPositions) {
+            roomMemory.harvestPositions = {};
+        }
+
         const sources = room.find(FIND_SOURCES_ACTIVE);
         
         for (const source of sources) {
-            // 检查是否已有任务
+            // 检查是否已有任务（包括已分配和未分配的）
             const hasTask = roomMemory.localTasks.harvestpro.some(task => 
                 task.releaserId === source.id
             );
 
             if (hasTask) continue;
 
-            // 查找最佳采集位置（能量源周围的可通行位置）
+            // 查找或加载采矿点位（能量源周围的可通行位置）
             const bestPos = this.findBestHarvestPosition(room, source);
             if (!bestPos) continue;
+
+            // 把采矿点位永久记录到房间内存（不会频繁变化）
+            roomMemory.harvestPositions[source.id] = {
+                x: bestPos.x,
+                y: bestPos.y,
+                roomName: bestPos.roomName
+            };
 
             // 检查附近是否有 Link
             const links = bestPos.findInRange(FIND_MY_STRUCTURES, 1, {
@@ -66,15 +78,33 @@ class TaskGenerator {
 
     /**
      * 查找最佳采集位置
+     * 优先选择「同时邻近能量源和link」的位置，其次才按距离控制器最近
      * @param {Room} room - 房间对象
      * @param {Source} source - 能量源
      * @returns {RoomPosition|null}
      */
     static findBestHarvestPosition(room, source) {
-        const terrain = new Room.Terrain(room.name);
-        const positions = [];
+        const roomMemory = MemoryManager.getRoomMemory(room.name);
+        // 1. 优先使用房间内存中持久记录的采矿点位（如果存在）
+        if (roomMemory && roomMemory.harvestPositions && roomMemory.harvestPositions[source.id]) {
+            const posData = roomMemory.harvestPositions[source.id];
+            const savedPos = new RoomPosition(posData.x, posData.y, posData.roomName || room.name);
+            return savedPos;
+        }
 
-        // 检查能量源周围的位置
+        // 2. 否则重新计算一次，并写回内存
+        const terrain = new Room.Terrain(room.name);
+        const allPositions = [];
+        const preferredPositions = [];
+
+        // 找出靠近该能量源的link（范围2以内）
+        const sourceLinks = room.find(FIND_MY_STRUCTURES, {
+            filter: s =>
+                s.structureType === STRUCTURE_LINK &&
+                s.pos.getRangeTo(source.pos) <= 2
+        });
+
+        // 检查能量源周围的一圈（1 格）位置
         for (let dx = -1; dx <= 1; dx++) {
             for (let dy = -1; dy <= 1; dy++) {
                 if (dx === 0 && dy === 0) continue;
@@ -84,35 +114,83 @@ class TaskGenerator {
 
                 if (x < 0 || x > 49 || y < 0 || y > 49) continue;
 
-                // 检查地形
+                // 1. 地形不能是墙
                 if (terrain.get(x, y) === TERRAIN_MASK_WALL) continue;
 
-                // 检查是否有建筑阻挡
-                const structures = room.lookForAt(LOOK_STRUCTURES, x, y);
+                const pos = room.getPositionAt(x, y);
+                if (!pos) continue;
+
+                // 2. 该位置上不能有阻挡建筑（允许 ROAD / CONTAINER / LINK）
+                const structures = pos.lookFor(LOOK_STRUCTURES);
                 const blocking = structures.some(s => 
                     s.structureType !== STRUCTURE_ROAD &&
                     s.structureType !== STRUCTURE_CONTAINER &&
                     s.structureType !== STRUCTURE_LINK
                 );
-
                 if (blocking) continue;
 
-                // 计算到控制器的距离（优先选择近的）
-                const pos = room.getPositionAt(x, y);
-                const distanceToController = pos.getRangeTo(room.controller);
+                // 3. 必须可以从房间内某个点走到这里（简单使用 PathFinder 做一次 reachability 检查）
+                //    这里优先使用任意 spawn / storage / controller 作为起点之一
+                let reachable = false;
+                const origins = [];
+                const spawns = room.find(FIND_MY_SPAWNS);
+                if (spawns.length > 0) {
+                    origins.push(spawns[0].pos);
+                } else if (room.storage) {
+                    origins.push(room.storage.pos);
+                } else if (room.controller) {
+                    origins.push(room.controller.pos);
+                }
 
-                positions.push({
-                    pos: pos,
+                for (const origin of origins) {
+                    const result = PathFinder.search(origin, { pos, range: 1 }, {
+                        maxOps: 2000,
+                        plainCost: 2,
+                        swampCost: 10
+                    });
+                    if (!result.incomplete) {
+                        reachable = true;
+                        break;
+                    }
+                }
+                // 如果房间里没有任何 origin（极早期情况），暂时认为可达
+                if (origins.length === 0) {
+                    reachable = true;
+                }
+                if (!reachable) continue;
+
+                // 4. 计算到控制器的距离（控制器可能不存在，用于后续排序）
+                const distanceToController = room.controller
+                    ? pos.getRangeTo(room.controller)
+                    : 0;
+
+                const info = {
+                    pos,
                     distance: distanceToController
-                });
+                };
+
+                allPositions.push(info);
+
+                // 如果附近有link，并且这个位置距离某个link <= 1，则作为优先候选
+                if (sourceLinks.length > 0) {
+                    for (const link of sourceLinks) {
+                        if (pos.getRangeTo(link) <= 1) {
+                            preferredPositions.push(info);
+                            break;
+                        }
+                    }
+                }
             }
         }
 
-        if (positions.length === 0) return null;
+        // 没有任何可用位置，返回null
+        if (allPositions.length === 0) return null;
+
+        const list = preferredPositions.length > 0 ? preferredPositions : allPositions;
 
         // 选择距离控制器最近的位置
-        positions.sort((a, b) => a.distance - b.distance);
-        return positions[0].pos;
+        list.sort((a, b) => a.distance - b.distance);
+        return list[0].pos;
     }
 
     /**
@@ -143,13 +221,15 @@ class TaskGenerator {
             if (existingTasks >= 2) continue; // 最多 2 个拾取任务
 
             const priority = 100 - Math.floor(resource.amount / 50);
+            // 将资源数量存储在addition中，避免Carrier需要调用Game.getObjectById
             TaskReleaser.releaseTask(
                 room,
                 Constants.TASK_TYPES.PICKUP,
                 resource.pos,
                 resource.pos,
                 resource.id,
-                priority
+                priority,
+                { amount: resource.amount, isResource: true }
             );
         }
 
@@ -163,13 +243,15 @@ class TaskGenerator {
             if (existingTasks >= Math.min(2, Math.floor(energy / 300))) continue;
 
             const priority = 100 - Math.floor(energy / 50);
+            // 将容器能量数量存储在addition中
             TaskReleaser.releaseTask(
                 room,
                 Constants.TASK_TYPES.PICKUP,
                 container.pos,
                 container.pos,
                 container.id,
-                priority
+                priority,
+                { amount: energy, isResource: false, isContainer: true }
             );
         }
     }

@@ -163,9 +163,10 @@ class BaseRole {
      * 接受任务
      * @param {Object} task - 任务对象
      * @param {string} roomName - 任务所在房间
+     * @param {boolean} _isRetry - 内部重试标记，避免无限递归
      * @returns {boolean} 是否成功
      */
-    assignTask(task, roomName = null) {
+    assignTask(task, roomName = null, _isRetry = false) {
         const logger = require('../../core/Logger');
         
         if (!task) {
@@ -237,6 +238,15 @@ class BaseRole {
                 this.creep.memory.task = actualTask;
                 this.creep.memory.inTask = true;
                 return true;
+            }
+
+            // 如果当前任务已经被别人抢走了，并且这是第一次尝试分配，
+            // 再尝试寻找同类型的“下一个可用任务”
+            if (!_isRetry) {
+                const nextTask = this.findAvailableTask(task.type, targetRoom);
+                if (nextTask && (nextTask.releaserId !== task.releaserId || nextTask.createdAt !== task.createdAt)) {
+                    return this.assignTask(nextTask, targetRoom, true);
+                }
             }
         }
 

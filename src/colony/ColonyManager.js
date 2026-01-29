@@ -27,6 +27,11 @@ class ColonyManager {
 
             // 清理死亡 Creep
             this.memoryManager.cleanDeadCreeps();
+            
+            // 清理无效任务（每10个tick清理一次，避免频繁清理）
+            if (Game.time % 10 === 0) {
+                this.memoryManager.cleanInvalidTasks();
+            }
         }, 'ColonyManager.init');
     }
 

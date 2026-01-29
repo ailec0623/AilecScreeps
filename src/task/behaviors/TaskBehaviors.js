@@ -58,26 +58,62 @@ const TaskBehaviors = {
     pickUp: function(creep, task) {
         const target = Game.getObjectById(task.releaserId);
         if (!target) {
-            // 目标不存在，移动到目标位置
-            const targetPos = new RoomPosition(
-                task.sourcePosition.x,
-                task.sourcePosition.y,
-                task.sourcePosition.roomName
-            );
-            creep.moveTo(targetPos);
+            // 目标不存在，完成任务
+            if (creep.memory.inTask && creep.memory.task) {
+                const RoleClasses = {
+                    harvesterpro: require('../../creep/roles/HarvesterPro'),
+                    carrier: require('../../creep/roles/Carrier'),
+                    worker: require('../../creep/roles/Worker')
+                };
+                const roleName = creep.memory.role;
+                if (roleName && RoleClasses[roleName]) {
+                    const roleInstance = new RoleClasses[roleName](creep);
+                    roleInstance.completeTask(task);
+                }
+            }
             return;
         }
 
         // 根据目标类型选择操作：Structure用withdraw，Resource用pickup
         if (target.store !== undefined) {
             // 是Structure（container, storage, link等）
-            if (creep.withdraw(target, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
+            const result = creep.withdraw(target, RESOURCE_ENERGY);
+            if (result === ERR_NOT_IN_RANGE) {
                 creep.moveTo(target, {reusePath: 10});
+            } else if (result !== OK) {
+                // 拾取失败（如资源不足、目标无效等），放弃任务
+                if (creep.memory.inTask && creep.memory.task) {
+                    const RoleClasses = {
+                        harvesterpro: require('../../creep/roles/HarvesterPro'),
+                        carrier: require('../../creep/roles/Carrier'),
+                        worker: require('../../creep/roles/Worker')
+                    };
+                    const roleName = creep.memory.role;
+                    if (roleName && RoleClasses[roleName]) {
+                        const roleInstance = new RoleClasses[roleName](creep);
+                        roleInstance.completeTask(task);
+                    }
+                }
             }
         } else if (target.amount !== undefined) {
             // 是Resource
-            if (creep.pickup(target) === ERR_NOT_IN_RANGE) {
+            const result = creep.pickup(target);
+            if (result === ERR_NOT_IN_RANGE) {
                 creep.moveTo(target, {reusePath: 10});
+            } else if (result !== OK) {
+                // 拾取失败（如资源已被拾取、目标无效等），放弃任务
+                if (creep.memory.inTask && creep.memory.task) {
+                    const RoleClasses = {
+                        harvesterpro: require('../../creep/roles/HarvesterPro'),
+                        carrier: require('../../creep/roles/Carrier'),
+                        worker: require('../../creep/roles/Worker')
+                    };
+                    const roleName = creep.memory.role;
+                    if (roleName && RoleClasses[roleName]) {
+                        const roleInstance = new RoleClasses[roleName](creep);
+                        roleInstance.completeTask(task);
+                    }
+                }
             }
         } else {
             // 未知类型，尝试移动到目标位置
@@ -188,7 +224,9 @@ const TaskBehaviors = {
         if (creep.room.name !== targetRoom) {
             creep.moveTo(new RoomPosition(25, 25, targetRoom));
         } else {
-            let targets = creep.room.find(FIND_HOSTILE_CREEPS);
+            // 优化：使用GameCache缓存的hostile creeps和structures，避免每个creep都查找
+            const GameCache = require('../../core/GameCache');
+            let targets = GameCache.getHostileCreeps(creep.room.name);
             if (targets.length !== 0) {
                 if (creep.attack(targets[0]) !== OK) {
                     creep.moveTo(targets[0]);
@@ -196,14 +234,7 @@ const TaskBehaviors = {
                 return;
             }
 
-            targets = creep.room.find(FIND_HOSTILE_STRUCTURES, {
-                filter: function(object) {
-                    return object.structureType !== STRUCTURE_CONTROLLER && 
-                           object.structureType !== STRUCTURE_WALL && 
-                           object.structureType !== STRUCTURE_RAMPART;
-                }
-            });
-
+            targets = GameCache.getHostileStructures(creep.room.name);
             if (targets.length > 0) {
                 if (creep.attack(targets[0]) !== OK) {
                     creep.moveTo(targets[0]);

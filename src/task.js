@@ -26,20 +26,15 @@ var Task = {
             var priority = 10;
             if (c == 'harvesterpro') {
                 priority = 3;
-                // try{
-                    var redFlags = _.filter(Game.flags, (flag) => flag.color == COLOR_RED && (flag.room == room || (flag.room && room.memory.extension.some((r) => r == flag.room.name))));
-                // }catch{
-                //     var redFlags = []
-                //     console.log('task.js: spawnTasks: harvesterpro: redFlags' );
-                // }
-                
-                desiredNum = Math.max(redFlags.length, 1);
+                // 使用能量源数量计算，而不是 flag 数量（与新的 SpawnScheduler 保持一致）
+                const sources = room.find(FIND_SOURCES_ACTIVE);
+                desiredNum = Math.max(sources.length, 1);
             } else if (c == 'carrier') {
                 
                 priority = 4;
                 if(config[c]['auto']){
                     try{
-                        desiredNum = 1 + Math.min(Math.ceil(room.memory.tasks.delivery.length / 8), 2);
+                        desiredNum = 1 + Math.min(Math.ceil(room.memory.tasks.delivery.length / 15), 2);
                     }catch(e){
                         console.log(e.stack);
                         console.log(room);
@@ -124,7 +119,20 @@ var Task = {
 
             }
 
-            if (creeps[c] < desiredNum) {
+            // 检查是否已有未分配的spawn任务（避免重复生成）
+            const MemoryManager = require('./core/MemoryManager');
+            const roomMemory = MemoryManager.getRoomMemory(room.name);
+            let existingSpawnTasks = 0;
+            if (roomMemory && roomMemory.localTasks && roomMemory.localTasks.spawn) {
+                existingSpawnTasks = roomMemory.localTasks.spawn.filter(
+                    t => t.addition && t.addition.role === c && !t.creepId
+                ).length;
+            }
+            
+            // 计算总数量：当前creep数量 + 生成中的数量 + 未分配的spawn任务数量
+            const totalCount = creeps[c] + existingSpawnTasks;
+            
+            if (totalCount < desiredNum) {
                 Releaser.releaseTask(room, 'spawn', null, null, null, priority, {role: c});
             }
         }
@@ -253,6 +261,17 @@ var Task = {
                         Game.getObjectById(room.memory.tasks[j][i].creepId).memory.inTask = false;
                     }
                     room.memory.tasks[j].splice(i, 1);
+                }
+                // 清理已满建筑的 delivery 任务
+                if (j == 'delivery' && room.memory.tasks[j][i].releaserId) {
+                    const target = Game.getObjectById(room.memory.tasks[j][i].releaserId);
+                    if (target && target.store) {
+                        const freeCapacity = target.store.getFreeCapacity(RESOURCE_ENERGY);
+                        // 如果目标已满（或接近满），删除未分配的任务
+                        if (!room.memory.tasks[j][i].creepId && freeCapacity === 0) {
+                            room.memory.tasks[j].splice(i, 1);
+                        }
+                    }
                 }
             }
         }

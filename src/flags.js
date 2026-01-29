@@ -15,15 +15,28 @@ var Flag = {
         }
     },
     harvestproTasks: function(f, room){
+        // 检查是否已有任务（使用新的内存路径）
+        const MemoryManager = require('./core/MemoryManager');
+        const roomMemory = MemoryManager.getRoomMemory(room.name);
+        
+        if (!roomMemory || !roomMemory.localTasks || !roomMemory.localTasks.harvestpro) {
+            return;
+        }
+        
+        // 检查该位置是否已有任务（检查位置和releaserId）
+        var target = f.pos.findClosestByRange(FIND_SOURCES);
+        if (!target) return;
+        
         var haveTask = false;
-        for (let t in room.memory.tasks.harvestpro) {
-            if (room.memory.tasks.harvestpro[t].sourcePosition.x == f.pos.x && room.memory.tasks.harvestpro[t].sourcePosition.y == f.pos.y) {
+        for (let t of roomMemory.localTasks.harvestpro) {
+            // 检查是否已有该能量源的任务（通过releaserId检查，更准确）
+            if (t.releaserId == target.id) {
                 haveTask = true;
                 break;
             }
         }
+        
         if (!haveTask) {
-            var target = f.pos.findClosestByRange(FIND_SOURCES);
             var links = f.pos.findInRange(FIND_MY_STRUCTURES, 1, {
                 filter: (s) =>{
                     return s.structureType == STRUCTURE_LINK;

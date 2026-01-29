@@ -5,7 +5,6 @@
  */
 
 const BaseRole = require('./BaseRole');
-const TaskBehaviors = require('../../task/behaviors/TaskBehaviors');
 const logger = require('../../core/Logger');
 
 class Worker extends BaseRole {
@@ -59,18 +58,41 @@ class Worker extends BaseRole {
             return;
         }
 
+        // 运行时动态获取 TaskBehaviors，确保模块已初始化
+        const TaskBehaviors = require('../../task/behaviors/TaskBehaviors');
+        if (!TaskBehaviors) {
+            logger.error(`TaskBehaviors not initialized for ${this.creep.name}`);
+            return;
+        }
+
         switch (task.type) {
             case 'build':
-                TaskBehaviors.build(this.creep, task);
+                if (TaskBehaviors.build) {
+                    TaskBehaviors.build(this.creep, task);
+                } else {
+                    logger.error(`TaskBehaviors.build not available for ${this.creep.name}`);
+                }
                 break;
             case 'upgrade':
-                TaskBehaviors.upgrade(this.creep, task);
+                if (TaskBehaviors.upgrade) {
+                    TaskBehaviors.upgrade(this.creep, task);
+                } else {
+                    logger.error(`TaskBehaviors.upgrade not available for ${this.creep.name}`);
+                }
                 break;
             case 'getenergy':
-                TaskBehaviors.getenergy(this.creep, task);
+                if (TaskBehaviors.getenergy) {
+                    TaskBehaviors.getenergy(this.creep, task);
+                } else {
+                    logger.error(`TaskBehaviors.getenergy not available for ${this.creep.name}`);
+                }
                 break;
             case 'pickup':
-                TaskBehaviors.pickUp(this.creep, task);
+                if (TaskBehaviors.pickUp) {
+                    TaskBehaviors.pickUp(this.creep, task);
+                } else {
+                    logger.error(`TaskBehaviors.pickUp not available for ${this.creep.name}`);
+                }
                 break;
             default:
                 logger.warn(`Worker ${this.creep.name} received unexpected task type: ${task.type}`);

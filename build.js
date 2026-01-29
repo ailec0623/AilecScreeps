@@ -250,14 +250,34 @@ const modules = {};
 
 `;
 
-    // 使用拓扑排序确保依赖顺序
-    const sortedModules = topologicalSort();
-    
     // 生成所有模块代码（除了 main）
+    // 策略：完全依赖 generateModuleCode 的递归处理，从 main 的依赖开始
+    // generateModuleCode 会确保依赖在使用它们的模块之前生成
     let modulesCode = '';
     const generated = new Set();
-    for (const moduleId of sortedModules) {
-        modulesCode += generateModuleCode(moduleId, new Set(), generated);
+    
+    // 从 main 模块开始，递归生成所有依赖
+    const mainModule = modules.get('main');
+    if (mainModule) {
+        // 生成 main 的所有直接依赖
+        // generateModuleCode 会递归处理每个依赖的依赖，确保正确的顺序
+        for (const dep of mainModule.dependencies) {
+            const code = generateModuleCode(dep.moduleId, new Set(), generated);
+            if (code) {
+                modulesCode += code;
+            }
+        }
+    }
+    
+    // 确保所有模块都被生成（处理可能遗漏的模块）
+    // 这些模块可能没有被 main 直接或间接引用
+    for (const [moduleId, module] of modules) {
+        if (moduleId !== 'main' && !generated.has(moduleId)) {
+            const code = generateModuleCode(moduleId, new Set(), generated);
+            if (code) {
+                modulesCode += code;
+            }
+        }
     }
 
     // 生成主代码

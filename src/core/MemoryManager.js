@@ -10,10 +10,39 @@ const ErrorHandler = require('./ErrorHandler');
 const MEMORY_PATH = 'colony_v2';
 const VERSION = '2.0';
 
+// 内存持久化：保存解析后的内存到全局（已迁移到global，这里保留注释）
+// let lastMemory = null; // 已迁移到 global._lastMemory
+// let lastTime = 0; // 已迁移到 global._lastTime
+
 class MemoryManager {
     constructor() {
         this.memoryPath = MEMORY_PATH;
         this.version = VERSION;
+    }
+
+    /**
+     * 加载已解析的内存（避免JSON.parse开销）
+     * 参考Overmind的Mem.load()实现
+     */
+    load() {
+        // 从全局恢复上次保存的内存
+        if (global._lastMemory && global._lastTime && Game.time === global._lastTime + 1) {
+            // 连续tick，尝试使用已解析的内存
+            // 注意：Screeps的Memory是自动解析的，我们主要是避免重复访问
+            // 这里主要是标记已经加载过，实际的内存解析由Screeps引擎完成
+        }
+        // 首次运行或非连续tick时，正常解析（由Screeps引擎自动完成）
+    }
+
+    /**
+     * 保存解析后的内存到全局（供下个tick使用）
+     * 参考Overmind的Mem实现
+     */
+    save() {
+        // 保存当前内存状态到全局，供下个tick参考
+        // 注意：实际的内存持久化由Screeps引擎完成
+        // 这里主要是标记保存时间
+        global._lastTime = Game.time;
     }
 
     /**
@@ -205,6 +234,114 @@ class MemoryManager {
     getColonyMemory() {
         const memory = this.getMemory();
         return memory.colony;
+    }
+
+    /**
+     * 清理无效任务（releaser不存在或任务过期）
+     */
+    cleanInvalidTasks() {
+        const colony = this.getColonyMemory();
+        const maxTaskAge = 10000; // 任务最大存活时间（tick）
+        const currentTime = Game.time;
+        
+        // 清理本地任务
+        for (const roomName in colony.rooms) {
+            const roomMemory = colony.rooms[roomName];
+            if (!roomMemory || !roomMemory.localTasks) continue;
+            
+            for (const taskType in roomMemory.localTasks) {
+                const tasks = roomMemory.localTasks[taskType];
+                if (!Array.isArray(tasks)) continue;
+
+                // 对于 pickup 任务，限制同一掉落点/容器的未分配任务数量不超过 2
+                const perTargetPickupCount = taskType === 'pickup' ? {} : null;
+                
+                // 从后往前遍历，避免删除时索引问题
+                for (let i = tasks.length - 1; i >= 0; i--) {
+                    const task = tasks[i];
+                    if (!task) {
+                        tasks.splice(i, 1);
+                        continue;
+                    }
+
+                    // 先做 pickup 任务去重：同一 releaserId 未分配任务最多保留 2 个
+                    if (taskType === 'pickup' && task.releaserId && !task.creepId) {
+                        const key = task.releaserId;
+                        if (!perTargetPickupCount[key]) {
+                            perTargetPickupCount[key] = 0;
+                        }
+                        perTargetPickupCount[key]++;
+                        if (perTargetPickupCount[key] > 2) {
+                            tasks.splice(i, 1);
+                            logger.debug(`cleanInvalidTasks: Removed extra pickup task ${task.releaserId} in ${roomName} - more than 2 unassigned tasks for this target`);
+                            continue;
+                        }
+                    }
+                    
+                    // 检查releaser是否存在
+                    if (task.releaserId) {
+                        const releaser = Game.getObjectById(task.releaserId);
+                        if (!releaser) {
+                            // releaser不存在，删除任务
+                            tasks.splice(i, 1);
+                            logger.debug(`cleanInvalidTasks: Removed invalid task ${task.releaserId} (${taskType}) in ${roomName} - releaser no longer exists`);
+                            continue;
+                        }
+                        
+                        // 对于 delivery 任务，检查目标是否已满（只清理未分配的任务）
+                        if (taskType === 'delivery' && !task.creepId && releaser.store) {
+                            const freeCapacity = releaser.store.getFreeCapacity(RESOURCE_ENERGY);
+                            if (freeCapacity === 0) {
+                                // 目标已满，删除未分配的任务
+                                tasks.splice(i, 1);
+                                logger.debug(`cleanInvalidTasks: Removed delivery task ${task.releaserId} in ${roomName} - target is full`);
+                                continue;
+                            }
+                        }
+                    }
+                    
+                    // 检查任务是否过期（创建时间过久）
+                    if (task.createdAt && (currentTime - task.createdAt) > maxTaskAge) {
+                        tasks.splice(i, 1);
+                        logger.debug(`cleanInvalidTasks: Removed expired task ${task.releaserId || 'unknown'} (${taskType}) in ${roomName} - age: ${currentTime - task.createdAt}`);
+                        continue;
+                    }
+                }
+            }
+        }
+        
+        // 清理跨房间任务
+        if (colony && colony.crossRoomTasks) {
+            for (const taskListName of ['transport', 'attack', 'expand']) {
+                const taskList = colony.crossRoomTasks[taskListName];
+                if (!Array.isArray(taskList)) continue;
+                
+                for (let i = taskList.length - 1; i >= 0; i--) {
+                    const task = taskList[i];
+                    if (!task) {
+                        taskList.splice(i, 1);
+                        continue;
+                    }
+                    
+                    // 检查releaser是否存在
+                    if (task.releaserId) {
+                        const releaser = Game.getObjectById(task.releaserId);
+                        if (!releaser) {
+                            taskList.splice(i, 1);
+                            logger.debug(`cleanInvalidTasks: Removed invalid cross-room task ${task.releaserId} (${taskListName}) - releaser no longer exists`);
+                            continue;
+                        }
+                    }
+                    
+                    // 检查任务是否过期
+                    if (task.createdAt && (currentTime - task.createdAt) > maxTaskAge) {
+                        taskList.splice(i, 1);
+                        logger.debug(`cleanInvalidTasks: Removed expired cross-room task ${task.releaserId || 'unknown'} (${taskListName}) - age: ${currentTime - task.createdAt}`);
+                        continue;
+                    }
+                }
+            }
+        }
     }
 
     /**
