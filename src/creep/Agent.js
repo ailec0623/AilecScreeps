@@ -40,32 +40,6 @@ function isClassTaskEnabledFor(creep) {
     return !!settings.useClassTasks;
 }
 
-/**
- * 是否在类 Task 系统启用时，仍然调用旧的 reviewTask 作为兜底。
- * 配置来源：settings.useRoleReviewFallback / settings.roles[role].useRoleReviewFallback
- * 默认：true（保守兜底）。
- * @param {Creep} creep
- * @returns {boolean}
- */
-function shouldUseReviewFallback(creep) {
-    if (!creep || !creep.memory || !creep.memory.room) return true;
-    const roomMemory = MemoryManager.getRoomMemory(creep.memory.room);
-    if (!roomMemory || !roomMemory.settings) return true;
-
-    const settings = roomMemory.settings;
-
-    const role = creep.memory.role;
-    if (role && settings.roles && settings.roles[role] && typeof settings.roles[role].useRoleReviewFallback === 'boolean') {
-        return settings.roles[role].useRoleReviewFallback;
-    }
-
-    if (typeof settings.useRoleReviewFallback === 'boolean') {
-        return settings.useRoleReviewFallback;
-    }
-
-    return true;
-}
-
 class Agent {
     /**
      * @param {Creep} creep
@@ -180,64 +154,43 @@ class Agent {
 
     /**
      * 本 tick 执行 creep 行为。
-     * 默认：保持与旧逻辑一致：acceptTask -> operate -> reviewTask。
-     * 启用类 Task 系统后：acceptTask -> Task.run() -> （基于 Task 状态调用角色 completeTask）。
+     * 单一路径：acceptTask -> 若有 Task 实例则 task.run()，否则 operate + reviewTask。
      */
     run() {
         const creep = this.creep;
         if (!creep) return;
 
-        const useClassTasks = isClassTaskEnabledFor(creep);
-
-        if (!useClassTasks) {
-            // 与旧实现保持完全一致，避免引入行为差异
-            if (typeof creep.acceptTask === 'function') {
-                creep.acceptTask();
-            }
-            if (typeof creep.operate === 'function') {
-                creep.operate();
-            }
-            if (typeof creep.reviewTask === 'function') {
-                creep.reviewTask();
-            }
-            return;
-        }
-
-        // === 类 Task 系统路径 ===
         if (typeof creep.acceptTask === 'function') {
             creep.acceptTask();
         }
 
         const task = this.task;
         if (!task) {
-            // 仍然可以运行旧的 reviewTask，用于一些“无任务时”的自检逻辑
-            if (shouldUseReviewFallback(creep) && typeof creep.reviewTask === 'function') {
+            // Carrier 无任务时需执行 checkIfExceedsRequirement（超额自杀）
+            if (creep.memory.role === 'carrier' && typeof creep.reviewTask === 'function') {
                 creep.reviewTask();
             }
             return;
         }
 
-        let status = TASK_STATUS.OK;
-        try {
-            // BaseTask.run 内部会先调用 isValid，再调用子类 work，并统一转换返回值为 TASK_STATUS
-            status = task.run(this);
-        } catch (e) {
-            // 防御性：避免单个任务异常导致整个 tick 崩溃
-            console.log(`[Agent] error running task for ${this.name}: ${e && e.stack || e}`);
-            status = TASK_STATUS.ABORTED;
+        // Task 类实例：由 BaseTask.run 驱动，按状态完成/清理
+        if (typeof task.run === 'function') {
+            let status = TASK_STATUS.OK;
+            try {
+                status = task.run(this);
+            } catch (e) {
+                console.log(`[Agent] error running task for ${this.name}: ${e && e.stack || e}`);
+                status = TASK_STATUS.ABORTED;
+            }
+            if (status === TASK_STATUS.FINISHED || status === TASK_STATUS.ABORTED) {
+                this._completeTaskViaRole(task);
+            }
+            return;
         }
 
-        // 根据 Task 状态决定是否完成 / 清理任务
-        if (status === TASK_STATUS.FINISHED || status === TASK_STATUS.ABORTED) {
-            this._completeTaskViaRole(task);
-        } else if (status === TASK_STATUS.RETRY) {
-            // 保留任务，后续 tick 可重试；此处暂不做额外处理
-        }
-
-        // 兜底：继续调用原有 reviewTask，让 Carrier / Worker 等角色按原规则完成或清理任务
-        if (shouldUseReviewFallback(creep) && typeof creep.reviewTask === 'function') {
-            creep.reviewTask();
-        }
+        // Proto / 未接入类 Task 的角色：沿用 operate + reviewTask
+        if (typeof creep.operate === 'function') creep.operate();
+        if (typeof creep.reviewTask === 'function') creep.reviewTask();
     }
 
     // 一些常用动作的薄包装，便于以后在 Agent 层统一增强行为

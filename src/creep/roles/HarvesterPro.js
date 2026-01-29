@@ -3,22 +3,6 @@
  */
 
 const BaseRole = require('./BaseRole');
-const MemoryManager = require('../../core/MemoryManager');
-
-function isClassTaskEnabledFor(creep) {
-    if (!creep || !creep.memory || !creep.memory.room) return false;
-    const roomMemory = MemoryManager.getRoomMemory(creep.memory.room);
-    if (!roomMemory || !roomMemory.settings) return false;
-
-    const settings = roomMemory.settings;
-    const role = creep.memory.role;
-
-    if (role && settings.roles && settings.roles[role] && settings.roles[role].useClassTasks) {
-        return true;
-    }
-
-    return !!settings.useClassTasks;
-}
 
 class HarvesterPro extends BaseRole {
     acceptTask() {
@@ -48,39 +32,14 @@ class HarvesterPro extends BaseRole {
         return false;
     }
 
+    /** 执行由 Agent 驱动的 HarvestProTask 接管，角色层不再调用 TaskBehaviors */
     operate() {
-        // 类 Task 模式下，由 HarvestProTask 接管 harvestPro 行为
-        if (isClassTaskEnabledFor(this.creep)) {
-            return;
-        }
-
-        if (this.creep.spawning || !this.creep.memory.inTask) {
-            return;
-        }
-
-        const task = this.creep.memory.task;
-        if (!task) {
-            return;
-        }
-
-        // 运行时动态获取 TaskBehaviors，确保模块已初始化
-        const TaskBehaviors = require('../../task/behaviors/TaskBehaviors');
-        if (!TaskBehaviors || !TaskBehaviors.harvestPro) {
-            const logger = require('../../core/Logger');
-            logger.error(`TaskBehaviors not initialized for ${this.creep.name}`);
-            return;
-        }
-
-        TaskBehaviors.harvestPro(this.creep, task);
+        return;
     }
 
+    /** 采集任务无额外审查逻辑 */
     reviewTask() {
-        if (!this.creep.memory.inTask || !this.creep.memory.task) {
-            return;
-        }
-
-        // 采集任务通常不需要审查，持续采集
-        // 可以添加能量满时的处理逻辑
+        return;
     }
 }
 

@@ -5,23 +5,6 @@
  */
 
 const BaseRole = require('./BaseRole');
-const logger = require('../../core/Logger');
-const MemoryManager = require('../../core/MemoryManager');
-
-function isClassTaskEnabledFor(creep) {
-    if (!creep || !creep.memory || !creep.memory.room) return false;
-    const roomMemory = MemoryManager.getRoomMemory(creep.memory.room);
-    if (!roomMemory || !roomMemory.settings) return false;
-
-    const settings = roomMemory.settings;
-    const role = creep.memory.role;
-
-    if (role && settings.roles && settings.roles[role] && settings.roles[role].useClassTasks) {
-        return true;
-    }
-
-    return !!settings.useClassTasks;
-}
 
 class Worker extends BaseRole {
     acceptTask() {
@@ -64,100 +47,14 @@ class Worker extends BaseRole {
         return false;
     }
 
+    /** 执行由 Agent 驱动的类 Task 系统接管，角色层不再调用 TaskBehaviors */
     operate() {
-        // 旧模式下仍由角色直接调 TaskBehaviors
-        if (isClassTaskEnabledFor(this.creep)) {
-            return;
-        }
-
-        if (this.creep.spawning || !this.creep.memory.inTask) {
-            return;
-        }
-
-        const task = this.creep.memory.task;
-        if (!task) {
-            return;
-        }
-
-        // 运行时动态获取 TaskBehaviors，确保模块已初始化
-        const TaskBehaviors = require('../../task/behaviors/TaskBehaviors');
-        if (!TaskBehaviors) {
-            logger.error(`TaskBehaviors not initialized for ${this.creep.name}`);
-            return;
-        }
-
-        switch (task.type) {
-            case 'build':
-                if (TaskBehaviors.build) {
-                    TaskBehaviors.build(this.creep, task);
-                } else {
-                    logger.error(`TaskBehaviors.build not available for ${this.creep.name}`);
-                }
-                break;
-            case 'upgrade':
-                if (TaskBehaviors.upgrade) {
-                    TaskBehaviors.upgrade(this.creep, task);
-                } else {
-                    logger.error(`TaskBehaviors.upgrade not available for ${this.creep.name}`);
-                }
-                break;
-            case 'getenergy':
-                if (TaskBehaviors.getenergy) {
-                    TaskBehaviors.getenergy(this.creep, task);
-                } else {
-                    logger.error(`TaskBehaviors.getenergy not available for ${this.creep.name}`);
-                }
-                break;
-            case 'pickup':
-                if (TaskBehaviors.pickUp) {
-                    TaskBehaviors.pickUp(this.creep, task);
-                } else {
-                    logger.error(`TaskBehaviors.pickUp not available for ${this.creep.name}`);
-                }
-                break;
-            default:
-                logger.warn(`Worker ${this.creep.name} received unexpected task type: ${task.type}`);
-                break;
-        }
+        return;
     }
 
+    /** 任务结束由 Task 子类 + Agent 状态驱动，角色层不再做结束判定 */
     reviewTask() {
-        // 类 Task 模式下，不再由 Worker 结束任务
-        if (isClassTaskEnabledFor(this.creep)) {
-            return;
-        }
-
-        if (!this.creep.memory.inTask || !this.creep.memory.task) {
-            return;
-        }
-
-        const task = this.creep.memory.task;
-
-        switch (task.type) {
-            case 'build':
-                if (this.creep.store.getUsedCapacity() === 0) {
-                    this.completeTask(task);
-                } else {
-                    const target = Game.getObjectById(task.releaserId);
-                    if (!target) {
-                        this.completeTask(task);
-                    }
-                }
-                break;
-
-            case 'upgrade':
-                if (this.creep.store.getUsedCapacity() === 0) {
-                    this.completeTask(task);
-                }
-                break;
-
-            case 'getenergy':
-            case 'pickup':
-                if (this.creep.store.getUsedCapacity() > 0) {
-                    this.completeTask(task);
-                }
-                break;
-        }
+        return;
     }
 }
 
