@@ -5,6 +5,7 @@
 
 const MemoryManager = require('../../core/MemoryManager');
 const Constants = require('../../config/Constants');
+const TaskPool = require('../../task/TaskPool');
 
 class BaseRole {
     /**
@@ -78,86 +79,10 @@ class BaseRole {
      * @returns {Object|null} 任务对象
      */
     findAvailableTask(taskType, roomName = null, filter = null) {
-        const tasks = [];
-        let bestTask = null;
-        let bestPriority = Infinity;
-
         if (roomName) {
-            // 指定房间 - 优化：直接查找，找到第一个可用任务就返回（如果不需要排序）
-            const roomMemory = this.getRoomMemory(roomName);
-            if (roomMemory && roomMemory.localTasks && roomMemory.localTasks[taskType]) {
-                const taskList = roomMemory.localTasks[taskType];
-                // 直接查找未分配的任务，避免不必要的遍历
-                for (const task of taskList) {
-                    // 只检查未分配的任务
-                    if (!task.creepId) {
-                        if (!filter || filter(task)) {
-                            const priority = task.priority || 0;
-                            // 如果找到更高优先级的任务，更新
-                            if (priority < bestPriority) {
-                                bestTask = task;
-                                bestPriority = priority;
-                                // 如果优先级是0或1（最高优先级），可以直接返回
-                                if (priority <= 1) {
-                                    return bestTask;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        } else {
-            // 跨房间查找（支持跨房间任务）
-            const colony = this.getColonyMemory();
-            
-            // 从主房间查找
-            for (const rn in colony.rooms) {
-                const roomMemory = colony.rooms[rn];
-                if (roomMemory && roomMemory.localTasks && roomMemory.localTasks[taskType]) {
-                    const taskList = roomMemory.localTasks[taskType];
-                    for (const task of taskList) {
-                        if (!task.creepId) {
-                            if (!filter || filter(task)) {
-                                const priority = task.priority || 0;
-                                if (priority < bestPriority) {
-                                    bestTask = task;
-                                    bestPriority = priority;
-                                    if (priority <= 1) {
-                                        return bestTask;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // 从跨房间任务查找
-            if (colony.crossRoomTasks) {
-                let crossTasks = [];
-                if (taskType === Constants.TASK_TYPES.DELIVERY || taskType === Constants.TASK_TYPES.PICKUP) {
-                    crossTasks = colony.crossRoomTasks.transport;
-                } else if (taskType === Constants.TASK_TYPES.GUARD) {
-                    crossTasks = colony.crossRoomTasks.attack;
-                }
-                for (const task of crossTasks) {
-                    if (!task.creepId) {
-                        if (!filter || filter(task)) {
-                            const priority = task.priority || 0;
-                            if (priority < bestPriority) {
-                                bestTask = task;
-                                bestPriority = priority;
-                                if (priority <= 1) {
-                                    return bestTask;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            return TaskPool.findBestLocalTask(roomName, taskType, filter);
         }
-
-        return bestTask;
+        return TaskPool.findBestGlobalTask(taskType, filter);
     }
 
     /**

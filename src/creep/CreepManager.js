@@ -35,6 +35,15 @@ class CreepManager {
                         const agent = AgentRegistry.get(creep);
                         if (!agent) continue;
 
+                        // 调试：低频记录 carrier 的任务状态，帮助排查任务无法结束的问题
+                        if (role === 'carrier' && Game.time % 50 === 0) {
+                            const task = creep.memory && creep.memory.task;
+                            logger.debug(
+                                `[CreepManager] carrier ${name} inTask=${creep.memory.inTask ? '1' : '0'} ` +
+                                `type=${task && task.type || 'none'} energy=${creep.store.getUsedCapacity(RESOURCE_ENERGY)}`
+                            );
+                        }
+
                         ErrorHandler.safeExecute(() => {
                             agent.run();
                         }, `CreepManager.run(${name})`);

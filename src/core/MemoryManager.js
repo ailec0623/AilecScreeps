@@ -32,6 +32,11 @@ class MemoryManager {
             // 这里主要是标记已经加载过，实际的内存解析由Screeps引擎完成
         }
         // 首次运行或非连续tick时，正常解析（由Screeps引擎自动完成）
+
+        // 兼容旧内存：确保已有房间都带有 settings 字段
+        this.ensureRoomSettings();
+        // 一次性迁移：如未标记，将所有房间默认启用类 Task 系统
+        this.ensureClassTasksGloballyEnabled();
     }
 
     /**
@@ -187,7 +192,16 @@ class MemoryManager {
             centralLink: '',
             claimRoom: '',
             destroy: [],
-            plan: null // 规划信息（预留）
+            plan: null, // 规划信息（预留）
+            // 任务与行为配置（支持灰度启用类 Task 系统）
+            settings: {
+                // 房间级是否启用类 Task 系统（Agent 使用 Task 实例执行 & 结束）
+                useClassTasks: false,
+                // 在启用类 Task 系统时，是否仍调用旧的 reviewTask 作为兜底
+                useRoleReviewFallback: true,
+                // 角色级覆盖：settings.roles[roleName].useClassTasks / useRoleReviewFallback
+                roles: {}
+            }
         };
 
         // 初始化任务列表
@@ -215,6 +229,72 @@ class MemoryManager {
                 room.localTasks[taskType] = [];
             }
         }
+    }
+
+    /**
+     * 兼容旧内存：为已经存在的房间补充缺失的 settings 字段
+     */
+    ensureRoomSettings() {
+        const memory = this.getMemory();
+        const colony = memory.colony;
+        if (!colony || !colony.rooms) return;
+
+        for (const roomName in colony.rooms) {
+            const room = colony.rooms[roomName];
+            if (!room) continue;
+
+            if (!room.settings) {
+                room.settings = {
+                    useClassTasks: false,
+                    useRoleReviewFallback: true,
+                    roles: {}
+                };
+            } else {
+                if (typeof room.settings.useClassTasks !== 'boolean') {
+                    room.settings.useClassTasks = false;
+                }
+                if (typeof room.settings.useRoleReviewFallback !== 'boolean') {
+                    room.settings.useRoleReviewFallback = true;
+                }
+                if (!room.settings.roles) {
+                    room.settings.roles = {};
+                }
+            }
+        }
+    }
+
+    /**
+     * 一次性迁移：为所有房间开启 useClassTasks，标记后不再重复覆盖，方便日后手动调整
+     */
+    ensureClassTasksGloballyEnabled() {
+        const memory = this.getMemory();
+        const colony = memory.colony;
+        if (!colony || !colony.rooms) return;
+
+        // 已执行过全局开启，则不再重复
+        if (colony._classTasksGlobalEnabled) return;
+
+        for (const roomName in colony.rooms) {
+            const room = colony.rooms[roomName];
+            if (!room) continue;
+            if (!room.settings) {
+                room.settings = {
+                    useClassTasks: true,
+                    useRoleReviewFallback: true,
+                    roles: {}
+                };
+            } else {
+                room.settings.useClassTasks = true;
+                if (typeof room.settings.useRoleReviewFallback !== 'boolean') {
+                    room.settings.useRoleReviewFallback = true;
+                }
+                if (!room.settings.roles) {
+                    room.settings.roles = {};
+                }
+            }
+        }
+
+        colony._classTasksGlobalEnabled = true;
     }
 
     /**

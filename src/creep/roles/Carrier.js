@@ -4,6 +4,22 @@
  */
 
 const BaseRole = require('./BaseRole');
+const MemoryManager = require('../../core/MemoryManager');
+
+function isClassTaskEnabledFor(creep) {
+    if (!creep || !creep.memory || !creep.memory.room) return false;
+    const roomMemory = MemoryManager.getRoomMemory(creep.memory.room);
+    if (!roomMemory || !roomMemory.settings) return false;
+
+    const settings = roomMemory.settings;
+    const role = creep.memory.role;
+
+    if (role && settings.roles && settings.roles[role] && settings.roles[role].useClassTasks) {
+        return true;
+    }
+
+    return !!settings.useClassTasks;
+}
 
 class Carrier extends BaseRole {
     acceptTask() {
@@ -80,6 +96,11 @@ class Carrier extends BaseRole {
     }
 
     operate() {
+        // 旧模式下仍由角色直接调 TaskBehaviors
+        if (isClassTaskEnabledFor(this.creep)) {
+            return;
+        }
+
         if (this.creep.spawning || !this.creep.memory.inTask) {
             return;
         }
@@ -117,6 +138,14 @@ class Carrier extends BaseRole {
     }
 
     reviewTask() {
+        // 在类 Task 模式下，不再由角色负责任务结束判定，只保留“超额清退”逻辑
+        if (isClassTaskEnabledFor(this.creep)) {
+            if (!this.creep.memory.inTask || !this.creep.memory.task) {
+                this.checkIfExceedsRequirement();
+            }
+            return;
+        }
+
         // 检查是否超过房间需求（只在没有任务时检查，避免频繁计算）
         if (!this.creep.memory.inTask || !this.creep.memory.task) {
             this.checkIfExceedsRequirement();
@@ -125,17 +154,32 @@ class Carrier extends BaseRole {
 
         const task = this.creep.memory.task;
 
+        // 调试：定期打印当前任务状态，定位任务无法结束的问题
+        if (Game.time % 50 === 0) {
+            const logger = require('../../core/Logger');
+            logger.debug(
+                `[Carrier.reviewTask] ${this.creep.name} type=${task.type} ` +
+                `energy=${this.creep.store.getUsedCapacity(RESOURCE_ENERGY)} inTask=1`
+            );
+        }
+
         switch (task.type) {
             case 'pickup':
                 // 如果已经获取资源，完成任务
                 if (this.creep.store.getUsedCapacity() > 0) {
+                    const logger = require('../../core/Logger');
+                    logger.debug(`[Carrier.reviewTask] ${this.creep.name} complete pickup: has energy`);
                     this.completeTask(task);
                 } else {
                     // 检查源是否为空（减少调用频率）
                     const source = Game.getObjectById(task.releaserId);
                     if (!source) {
+                        const logger = require('../../core/Logger');
+                        logger.debug(`[Carrier.reviewTask] ${this.creep.name} complete pickup: source missing`);
                         this.completeTask(task);
                     } else if (source.store && source.store.getUsedCapacity(RESOURCE_ENERGY) < 10) {
+                        const logger = require('../../core/Logger');
+                        logger.debug(`[Carrier.reviewTask] ${this.creep.name} complete pickup: source low energy`);
                         this.completeTask(task);
                     }
                 }
@@ -144,10 +188,14 @@ class Carrier extends BaseRole {
             case 'getenergy':
                 // 如果已经获取能量，完成任务
                 if (this.creep.store.getUsedCapacity() > 0) {
+                    const logger = require('../../core/Logger');
+                    logger.debug(`[Carrier.reviewTask] ${this.creep.name} complete getenergy: has energy`);
                     this.completeTask(task);
                 } else {
                     const source = Game.getObjectById(task.releaserId);
                     if (!source || !source.store || source.store.getUsedCapacity(RESOURCE_ENERGY) <= 0) {
+                        const logger = require('../../core/Logger');
+                        logger.debug(`[Carrier.reviewTask] ${this.creep.name} complete getenergy: source empty/missing`);
                         this.completeTask(task);
                     }
                 }
@@ -156,36 +204,50 @@ class Carrier extends BaseRole {
             case 'delivery':
                 // 如果能量为空，完成任务
                 if (this.creep.store.getUsedCapacity() === 0) {
+                    const logger = require('../../core/Logger');
+                    logger.debug(`[Carrier.reviewTask] ${this.creep.name} complete delivery: no energy`);
                     this.completeTask(task);
                 } else {
                     const target = Game.getObjectById(task.releaserId);
                     if (!target) {
                         // 目标不存在，完成任务
+                        const logger = require('../../core/Logger');
+                        logger.debug(`[Carrier.reviewTask] ${this.creep.name} complete delivery: target missing`);
                         this.completeTask(task);
                     } else if (target.store) {
                         // 检查目标是否已满（根据结构类型使用不同的阈值）
                         const freeCapacity = target.store.getFreeCapacity(RESOURCE_ENERGY);
                         if (freeCapacity === 0) {
                             // 完全满了，完成任务
+                            const logger = require('../../core/Logger');
+                            logger.debug(`[Carrier.reviewTask] ${this.creep.name} complete delivery: target full`);
                             this.completeTask(task);
                         } else if (target.structureType === STRUCTURE_SPAWN || target.structureType === STRUCTURE_EXTENSION) {
                             // Spawn 和 Extension：如果剩余空间小于 50，完成任务（避免浪费）
                             if (freeCapacity < 50) {
+                                const logger = require('../../core/Logger');
+                                logger.debug(`[Carrier.reviewTask] ${this.creep.name} complete delivery: small freeCapacity spawn/extension (${freeCapacity})`);
                                 this.completeTask(task);
                             }
                         } else if (target.structureType === STRUCTURE_TOWER) {
                             // Tower：如果剩余空间小于 200，完成任务
                             if (freeCapacity < 200) {
+                                const logger = require('../../core/Logger');
+                                logger.debug(`[Carrier.reviewTask] ${this.creep.name} complete delivery: small freeCapacity tower (${freeCapacity})`);
                                 this.completeTask(task);
                             }
                         } else {
                             // 其他结构：如果剩余空间小于 2，完成任务
                             if (freeCapacity < 2) {
+                                const logger = require('../../core/Logger');
+                                logger.debug(`[Carrier.reviewTask] ${this.creep.name} complete delivery: small freeCapacity other (${freeCapacity})`);
                                 this.completeTask(task);
                             }
                         }
                     } else {
                         // 目标没有 store（不应该发生），完成任务
+                        const logger = require('../../core/Logger');
+                        logger.debug(`[Carrier.reviewTask] ${this.creep.name} complete delivery: target has no store`);
                         this.completeTask(task);
                     }
                 }

@@ -6,6 +6,22 @@
 
 const BaseRole = require('./BaseRole');
 const logger = require('../../core/Logger');
+const MemoryManager = require('../../core/MemoryManager');
+
+function isClassTaskEnabledFor(creep) {
+    if (!creep || !creep.memory || !creep.memory.room) return false;
+    const roomMemory = MemoryManager.getRoomMemory(creep.memory.room);
+    if (!roomMemory || !roomMemory.settings) return false;
+
+    const settings = roomMemory.settings;
+    const role = creep.memory.role;
+
+    if (role && settings.roles && settings.roles[role] && settings.roles[role].useClassTasks) {
+        return true;
+    }
+
+    return !!settings.useClassTasks;
+}
 
 class Worker extends BaseRole {
     acceptTask() {
@@ -49,6 +65,11 @@ class Worker extends BaseRole {
     }
 
     operate() {
+        // 旧模式下仍由角色直接调 TaskBehaviors
+        if (isClassTaskEnabledFor(this.creep)) {
+            return;
+        }
+
         if (this.creep.spawning || !this.creep.memory.inTask) {
             return;
         }
@@ -101,6 +122,11 @@ class Worker extends BaseRole {
     }
 
     reviewTask() {
+        // 类 Task 模式下，不再由 Worker 结束任务
+        if (isClassTaskEnabledFor(this.creep)) {
+            return;
+        }
+
         if (!this.creep.memory.inTask || !this.creep.memory.task) {
             return;
         }

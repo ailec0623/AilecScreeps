@@ -3,6 +3,22 @@
  */
 
 const BaseRole = require('./BaseRole');
+const MemoryManager = require('../../core/MemoryManager');
+
+function isClassTaskEnabledFor(creep) {
+    if (!creep || !creep.memory || !creep.memory.room) return false;
+    const roomMemory = MemoryManager.getRoomMemory(creep.memory.room);
+    if (!roomMemory || !roomMemory.settings) return false;
+
+    const settings = roomMemory.settings;
+    const role = creep.memory.role;
+
+    if (role && settings.roles && settings.roles[role] && settings.roles[role].useClassTasks) {
+        return true;
+    }
+
+    return !!settings.useClassTasks;
+}
 
 class HarvesterPro extends BaseRole {
     acceptTask() {
@@ -33,6 +49,11 @@ class HarvesterPro extends BaseRole {
     }
 
     operate() {
+        // 类 Task 模式下，由 HarvestProTask 接管 harvestPro 行为
+        if (isClassTaskEnabledFor(this.creep)) {
+            return;
+        }
+
         if (this.creep.spawning || !this.creep.memory.inTask) {
             return;
         }
