@@ -3,8 +3,13 @@
  * 从 task.behavior.js 迁移
  */
 
+function unwrapCreep(creepOrAgent) {
+    return creepOrAgent && creepOrAgent.creep ? creepOrAgent.creep : creepOrAgent;
+}
+
 const TaskBehaviors = {
     harvestPro: function(creep, task) {
+        creep = unwrapCreep(creep);
         // 缓存source对象，避免重复查找
         const source = Game.getObjectById(task.releaserId);
         if (!source) {
@@ -56,6 +61,7 @@ const TaskBehaviors = {
     },
 
     pickUp: function(creep, task) {
+        creep = unwrapCreep(creep);
         const target = Game.getObjectById(task.releaserId);
         if (!target) {
             // 目标不存在，完成任务
@@ -127,6 +133,7 @@ const TaskBehaviors = {
     },
 
     delivery: function(creep, task) {
+        creep = unwrapCreep(creep);
         const target = Game.getObjectById(task.releaserId);
         if (!target) {
             return; // 目标不存在
@@ -137,6 +144,7 @@ const TaskBehaviors = {
     },
 
     getenergy: function(creep, task) {
+        creep = unwrapCreep(creep);
         const target = Game.getObjectById(task.releaserId);
         if (!target || !target.store) {
             return; // 目标不存在或没有store
@@ -147,6 +155,7 @@ const TaskBehaviors = {
     },
 
     repair: function(creep, task) {
+        creep = unwrapCreep(creep);
         const target = Game.getObjectById(task.releaserId);
         if (!target) {
             return; // 目标不存在
@@ -157,6 +166,7 @@ const TaskBehaviors = {
     },
 
     build: function(creep, task) {
+        creep = unwrapCreep(creep);
         const target = Game.getObjectById(task.releaserId);
         if (!target) {
             // 目标不存在，移动到目标位置
@@ -174,6 +184,7 @@ const TaskBehaviors = {
     },
 
     upgrade: function(creep, task) {
+        creep = unwrapCreep(creep);
         const target = Game.getObjectById(task.releaserId);
         if (!target) {
             return; // 目标不存在
@@ -184,6 +195,7 @@ const TaskBehaviors = {
     },
 
     reserve: function(creep, task) {
+        creep = unwrapCreep(creep);
         const target = Game.getObjectById(task.releaserId);
         if (creep.reserveController(target) === ERR_NOT_IN_RANGE) {
             if (creep.moveTo(target, {reusePath: 50}) !== OK) {
@@ -198,6 +210,7 @@ const TaskBehaviors = {
     },
 
     guard: function(creep, task) {
+        creep = unwrapCreep(creep);
         const target = Game.getObjectById(task.releaserId);
         const state = creep.attack(target);
         if (state === ERR_NOT_IN_RANGE) {
@@ -213,6 +226,7 @@ const TaskBehaviors = {
     },
 
     destroy: function(creep) {
+        creep = unwrapCreep(creep);
         const mainRoom = creep.memory.room;
         const roomMemory = require('../../core/MemoryManager').getRoomMemory(mainRoom);
         

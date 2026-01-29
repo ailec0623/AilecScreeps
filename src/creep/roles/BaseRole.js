@@ -9,9 +9,10 @@ const Constants = require('../../config/Constants');
 class BaseRole {
     /**
      * 构造函数
-     * @param {Creep} creep - Creep 对象
+     * @param {Creep|Object} creepOrAgent - Creep 对象或 Agent 包装
      */
-    constructor(creep) {
+    constructor(creepOrAgent) {
+        const creep = creepOrAgent && creepOrAgent.creep ? creepOrAgent.creep : creepOrAgent;
         this.creep = creep;
         this.role = creep.memory.role;
     }

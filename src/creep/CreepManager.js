@@ -8,6 +8,7 @@ const logger = require('../core/Logger');
 const ErrorHandler = require('../core/ErrorHandler');
 const CreepGroup = require('./CreepGroup');
 const GameCache = require('../core/GameCache');
+const AgentRegistry = require('./AgentRegistry');
 
 class CreepManager {
     /**
@@ -29,13 +30,14 @@ class CreepManager {
                     const creepNames = creepsByRole[role];
                     for (const name of creepNames) {
                         const creep = Game.creeps[name];
-                        if (creep) {
-                            ErrorHandler.safeExecute(() => {
-                                creep.acceptTask();
-                                creep.operate();
-                                creep.reviewTask();
-                            }, `CreepManager.run(${name})`);
-                        }
+                        if (!creep) continue;
+
+                        const agent = AgentRegistry.get(creep);
+                        if (!agent) continue;
+
+                        ErrorHandler.safeExecute(() => {
+                            agent.run();
+                        }, `CreepManager.run(${name})`);
                     }
                 }
             }

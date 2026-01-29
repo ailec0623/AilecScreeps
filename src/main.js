@@ -30,6 +30,7 @@ require('./mount')();
 
 // 导入新的 Creep 管理器
 const CreepManager = require('./creep/CreepManager');
+const AgentRegistry = require('./creep/AgentRegistry');
 
 // 创建殖民地管理器实例
 const colonyManager = new ColonyManager();
@@ -53,6 +54,12 @@ module.exports.loop = function () {
         GameCache.refresh();
         cpu = Game.cpu.getUsed();
         logger.debug(`[CPU] GameCache.refresh: ${(cpu - lastCpu).toFixed(3)}ms`);
+        lastCpu = cpu;
+
+        // 刷新 Agent 包装（为每个 Creep 创建/更新 Agent）
+        AgentRegistry.refreshAll();
+        cpu = Game.cpu.getUsed();
+        logger.debug(`[CPU] AgentRegistry.refreshAll: ${(cpu - lastCpu).toFixed(3)}ms`);
         lastCpu = cpu;
         
         // 内存清理：清理过期缓存（每100个tick清理一次，避免频繁清理）
